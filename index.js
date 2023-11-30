@@ -1,8 +1,7 @@
 const mysql = require("mysql2");
 const inquirer = require("inquirer");
 const db = require("./db");
-const connect = require("./db");
-
+const {prompt} = require("inquirer");
 
 const init = () => {
   inquirer
@@ -12,38 +11,72 @@ const init = () => {
         message: "Please select from the list",
         name: "List",
         choices: [
-          
-          "view all departments",
-          "view all roles",
-          "view all employees",
-          "Add a department",
-          "Add a role",
-          "Add an employee",
-          "Update an employee role",
-          "Remove an employee",
-          "Remove a department",
-          "Remove a role",
-          "done",
+          {
+            name: "view all departments",
+          },
+
+          {
+            name: "view all employees",
+          },
+          {
+            name: "view roles",
+          },
+          {
+            name: "Add a department",
+          },
+
+          {
+            name: "Add a role",
+          },
+
+          {
+            name: "Add an employee",
+          },
+
+          {
+            name: "Update an employee role",
+          },
+
+          { 
+            name: "Remove an employee",
+          },
+
+          {
+            name: "Remove a department",
+          },
+
+          {
+            name: "Remove a role",
+          },
+
+          {
+            name: "done",
+          },
         ],
       },
     ])
-    .then((answers) => {
-      switch (answers.List) {
+    .then((res) => {
+      let answers = res.List;
+      switch (answers) {
         case "view all departments":
-          viewDepartments();
+          viewDepartments(answers);
           break;
 
         case "view all roles":
-          viewRoles();
+          viewRoles(answers);
           break;
 
         case "view all employees":
-          viewAllEmployees();
+          viewEmployees(answers);
           break;
 
         case "Add a department":
           addDepartment(answers);
-        case "Add a role":
+
+        case "View Roles":
+          viewRoles();
+
+        case "Add role":
           addRole(answers);
           break;
 
@@ -54,27 +87,67 @@ const init = () => {
         case "Update an employee role":
           addAnEmployeeRole(answers);
           break;
-        case "done":
-            done(answers);
+
+        case "VIEW EMPLOYEES BY DEPARTMENT":
+          viewEmployeesByDepartment(answers);
           break;
 
-          default:
-            console.log("Error Invalid choice");
-            break;
+        case "VIEW_EMPLOYEES_BY_MANAGER":
+          viewEmployeesByManager(answers);
+          break;
+
+        case "done":
+          quit(answers);
+          break;
+
+        default:
+          console.log("Error Invalid choice");
+          break;
       }
     });
 };
 
-init();
-
-function viewAllEmployees() {
+function viewDepartments() {
+  db.findAllDepartments()
+    .then(([rows]) => {
+      let department = rows;
+      console.log("\n");
+      console.table(department);
+    })
+    .then(() => loadMainPrompts())
+    .catch((error) => console.error("Error fetch Employees"));
+}
+function viewEmployees() {
   db.findAllEmployees()
     .then(([rows]) => {
       let employees = rows;
-      console.log("\n");
       console.table(employees);
     })
     .then(() => loadMainPrompts())
-    .catch((error) =>
-    console.error("Error fetch Employees"),err);
-  };
+    .catch((error) => console.error("Error fetch Employees"));
+}
+
+function viewRoles() {
+  db.findAllRoles().then(([rows]) => {
+    let roles = rows;
+    console.table(roles);
+  });
+  prompt([
+    {
+      name: "titles",
+      message: "What's the new role you want to add",
+    },
+    {
+      name: "salary",
+      message: "What is the salary of the role?",
+    },
+    {
+      type: "list",
+      name: "department_id",
+      message: "Which department does the role belong to?",
+      choices: departmentChoices,
+    },
+  ]);
+}
+
+init();
