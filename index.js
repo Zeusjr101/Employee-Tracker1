@@ -1,7 +1,5 @@
-const mysql = require("mysql2");
 const inquirer = require("inquirer");
 const db = require("./db");
-const {prompt} = require("inquirer");
 
 const init = () => {
   inquirer
@@ -9,145 +7,202 @@ const init = () => {
       {
         type: "list",
         message: "Please select from the list",
-        name: "List",
+        name: "action",
         choices: [
-          {
-            name: "view all departments",
-          },
-
-          {
-            name: "view all employees",
-          },
-          {
-            name: "view roles",
-          },
-          {
-            name: "Add a department",
-          },
-
-          {
-            name: "Add a role",
-          },
-
-          {
-            name: "Add an employee",
-          },
-
-          {
-            name: "Update an employee role",
-          },
-
-          { 
-            name: "Remove an employee",
-          },
-
-          {
-            name: "Remove a department",
-          },
-
-          {
-            name: "Remove a role",
-          },
-
-          {
-            name: "done",
-          },
+          "view all departments",
+          "view roles",
+          "view all employees",
+          "Add a department",
+          "Add a role",
+          "Add an employee",
+          "Update an employee role",
+          "Quit",
         ],
       },
     ])
-    .then((res) => {
-      let answers = res.List;
-      switch (answers) {
+    .then((answers) => {
+      const { action } = answers;
+      switch (action) {
         case "view all departments":
-          viewDepartments(answers);
+          getDepartments();
           break;
 
-        case "view all roles":
-          viewRoles(answers);
+        case "view roles":
+          viewRole();
           break;
 
         case "view all employees":
-          viewEmployees(answers);
+          getEmployees();
           break;
 
         case "Add a department":
-          addDepartment(answers);
-
-        case "View Roles":
-          viewRoles();
-
-        case "Add role":
-          addRole(answers);
+          addDepartment();
           break;
 
-        case " Add a employee":
-          addEmployee(answers);
+        case "Add a role":
+          addRole();
+          break;
+
+        case "Add an employee":
+          createEmployee();
           break;
 
         case "Update an employee role":
-          addAnEmployeeRole(answers);
+          updateEmployee();
           break;
 
-        case "VIEW EMPLOYEES BY DEPARTMENT":
-          viewEmployeesByDepartment(answers);
-          break;
-
-        case "VIEW_EMPLOYEES_BY_MANAGER":
-          viewEmployeesByManager(answers);
-          break;
-
-        case "done":
-          quit(answers);
+        case "Quit":
+          quit();
           break;
 
         default:
-          console.log("Error Invalid choice");
+          console.log("Error: Invalid choice");
           break;
       }
     });
 };
 
-function viewDepartments() {
-  db.findAllDepartments()
-    .then(([rows]) => {
-      let department = rows;
-      console.log("\n");
-      console.table(department);
-    })
-    .then(() => loadMainPrompts())
-    .catch((error) => console.error("Error fetch Employees"));
-}
-function viewEmployees() {
-  db.findAllEmployees()
-    .then(([rows]) => {
-      let employees = rows;
-      console.table(employees);
-    })
-    .then(() => loadMainPrompts())
-    .catch((error) => console.error("Error fetch Employees"));
+async function getDepartments() {
+  try {
+    const [rows] = await db.getDepartments();
+    let departments = rows;
+    console.table(departments);
+    init();
+  } catch (error) {
+    console.error("Error fetching Departments: " + error.message);
+  }
 }
 
-function viewRoles() {
-  db.findAllRoles().then(([rows]) => {
-    let roles = rows;
-    console.table(roles);
-  });
-  prompt([
+async function viewRole() {
+  try {
+    const [rows] = await db.viewRole();
+    let role = rows;
+    console.table(role);
+    init();
+  } catch (error) {
+    console.error("Error fetching Roles:" + error.message);
+  }
+}
+
+async function getEmployees() {
+  try {
+    const [rows] = await db.getEmployees();
+    let employee = rows;
+    console.table(employee);
+    init();
+  } catch (error) {
+    console.error("Error fetching Employees: " + error.message);
+  }
+}
+
+async function addDepartment() {
+  const answers = await inquirer.prompt([
     {
-      name: "titles",
-      message: "What's the new role you want to add",
-    },
-    {
-      name: "salary",
-      message: "What is the salary of the role?",
-    },
-    {
-      type: "list",
-      name: "department_id",
-      message: "Which department does the role belong to?",
-      choices: departmentChoices,
+      name: "name",
+      message: "What is the name of the department?",
     },
   ]);
+  const { name } = answers;
+  try {
+    await db.addDepartments({ name: name }); 
+    console.log(`Added ${name} to the database`);
+    init();
+  } catch (error) {
+    console.error("Error adding department: " + error.message);
+    init();
+  }
 }
+
+
+function addRole() {
+  db.getDepartments().then(([rows]) => {
+    const departmentChoices = rows.map(({ id, name }) => ({
+      name: name,
+      value: id,
+    }));
+    inquirer
+      .prompt([
+        {
+          name: "title",
+          message: "What is the name of the role?",
+        },
+        {
+          name: "salary",
+          message: "What is the salary of the role?",
+        },
+        {
+          type: "list",
+          name: "department_id",
+          message: "Which department does the role belong to?",
+          choices: departmentChoices,
+        },
+      ])
+      .then((role) => {
+        if (!role.title || !role.salary || !role.department_id) {
+          console.error("Error: Please provide valid input for role details.");
+          init();
+          return;
+        }
+        db.addRole(role)
+          .then(() => console.log(`Added ${role.title} to the database`))
+          .then(() => init())
+          .catch((error) => {
+            console.error("Error adding role: " + error.message);
+            init();
+          });
+      });
+  });
+}
+
+// function createEmployee() {
+//   inquirer.prompt([
+//     {
+//       name: "first_name",
+//       message: "What is the employee's first name?",
+//     },
+//     {
+//       name: "last_name",
+//       message: "What is the employee's last name?",
+//     },
+//   ]).then((answers) => {
+//     const { first_name, last_name } = answers;
+//     db.createEmployee({ first_name, last_name })
+//       .then(() => console.log(`Added employee to the database`))
+//       .then(() => init())
+//       .catch((error) => {
+//         console.error("Error adding employee: " + error.message);
+//         init();
+//       });
+//   });
+// }
+
+// async function updateEmployee(employeeToUpdate) {
+//   try {
+//     const existingEmployee = await db.({ employee: employeeToUpdate });
+
+//     if (!existingEmployee) {
+//       console.log("Employee not found");
+//       return;
+//     }
+
+//     existingEmployee.name = employeeToUpdate.name;
+//     existingEmployee.salary = employeeToUpdate.salary;
+
+//     await existingEmployee.save();
+//     return existingEmployee;
+//   } catch (error) {
+//     console.error("Error updating employee:", error);
+//     // Handle the error appropriately
+//   }
+// }
+
+function quit() {
+  console.log("Exiting the application. Goodbye!");
+  process.exit();
+}
+
+module.exports = {
+  addDepartment,
+};
 
 init();
